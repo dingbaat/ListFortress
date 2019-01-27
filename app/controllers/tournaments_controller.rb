@@ -6,14 +6,20 @@ class TournamentsController < ApplicationController
   # GET /tournaments.json
   def index
     @tournaments = Tournament.all.order(date: :desc).paginate(:page => params[:page], :per_page => 25)
+    respond_to do |format|
+      format.html
+      format.json {render json: @tournaments.as_json({:only => [:id, :name, :location, :state, :country, :date, :format_id, :version_id, :tournament_type_id, :created_at, :updated_at], :exclude => [:participants]})}
+    end
   end
 
   # GET /tournaments/1
   # GET /tournaments/1.json
   def show
     respond_to do |format|
+      #@tournament = Tournament.where(id:params[:id])
       format.html
-      format.csv { send_data Tournament.where(id: params[:id]).to_csv, filename: "listfortress-#{@tournament.id}.csv"}
+      format.json { render json: @tournament.as_json({:only => [:id, :name, :location, :state, :country, :date, :format_id, :version_id, :tournament_type_id, :created_at, :updated_at], :include => [:participants, :rounds]})}
+      format.csv { send_data  Tournament.where(id:params[:id]).to_csv, filename: "listfortress-#{@tournament.id}.csv"}
     end
   end
 
@@ -84,7 +90,7 @@ class TournamentsController < ApplicationController
           :type, :format_id, :country,
           :state, :organizer_id, :location,
           :patch_id, :tournament_type_id, :date,
-          :tabletop_url, :cryodex_json
+          :tabletop_url, :cryodex_json, :round_number
         ]
       )
     end
