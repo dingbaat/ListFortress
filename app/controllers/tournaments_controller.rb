@@ -5,11 +5,10 @@ class TournamentsController < ApplicationController
   # GET /tournaments
   # GET /tournaments.json
   def index
-    @tournaments = Tournament.all.order(date: :desc).paginate(:page => params[:page], :per_page => 25)
-    respond_to do |format|
-      format.html
-      format.json {render json: @tournaments.as_json({:only => [:id, :name, :location, :state, :country, :date, :format_id, :version_id, :tournament_type_id, :created_at, :updated_at], :exclude => [:participants]})}
-    end
+    @tournaments = Tournament.all
+                             .includes(:tournament_type, :format)
+                             .order(date: :desc)
+                             .paginate(page: params[:page], per_page: 25)
   end
 
   # GET /tournaments/1
@@ -17,8 +16,7 @@ class TournamentsController < ApplicationController
   def show
     respond_to do |format|
       #@tournament = Tournament.where(id:params[:id])
-      format.html
-      format.json { render json: @tournament.as_json({:only => [:id, :name, :location, :state, :country, :date, :format_id, :version_id, :tournament_type_id, :created_at, :updated_at], :include => [:participants, :rounds]})}
+      format.html 
       format.csv { send_data  Tournament.where(id:params[:id]).to_csv, filename: "listfortress-#{@tournament.id}.csv"}
     end
   end
@@ -53,7 +51,7 @@ class TournamentsController < ApplicationController
   # PATCH/PUT /tournaments/1.json
   def update
     respond_to do |format|
-      if @tournament.update(tournament_params['tournament'])
+      if @tournament.update_from_json(tournament_params['tournament'])
         format.html { redirect_to @tournament, notice: 'Tournament was successfully updated.' }
         format.json { render :show, status: :ok, location: @tournament }
       else
@@ -76,22 +74,31 @@ class TournamentsController < ApplicationController
   end
 
   private
-    # Use callbacks to share common setup or constraints between actions.
-    def set_tournament
-      @tournament = Tournament.find(params[:id])
-    end
 
-    # Never trust parameters from the scary internet, only allow the white list through.
-    def tournament_params
-      params.permit(
-        :name, tournament:
-        [
-          :id, :name, :participant_number,
-          :type, :format_id, :country,
-          :state, :organizer_id, :location,
-          :patch_id, :tournament_type_id, :date,
-          :tabletop_url, :cryodex_json, :round_number
-        ]
-      )
-    end
+  # Use callbacks to share common setup or constraints between actions.
+  def set_tournament
+    @tournament = Tournament.find(params[:id])
+    rescue ActiveRecord::RecordNotFound
+      render(:file => File.join(Rails.root, 'public/404.html'), :status => 404, :layout => false)
+    # handle not found error
+    rescue ActiveRecord::ActiveRecordError
+      render(:file => File.join(Rails.root, 'public/404.html'), :status => 404, :layout => false)
+    # handle other ActiveRecord errors
+    rescue StandardError
+      render(:file => File.join(Rails.root, 'public/404.html'), :status => 404, :layout => false)
+  end
+
+  # Never trust parameters from the scary internet, only allow the white list through.
+  def tournament_params
+    params.permit(
+      :name, tournament:
+      [
+        :id, :name, :participant_number,
+        :type, :format_id, :country,
+        :state, :organizer_id, :location,
+        :patch_id, :tournament_type_id, :date,
+        :tabletop_url, :cryodex_json, :round_number
+      ]
+    )
+  end
 end
